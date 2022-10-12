@@ -20,25 +20,8 @@ export const createObjectSchema = async () => {
       return assetTypes.data[`site${i+1}`].assetTypes;
     })
     finalAssetTypes = finalAssetTypes.flat();
-    // console.log("finalAssetTypes ==>", finalAssetTypes);
-    // const reqConfig = getAtlasRequestConfig("GET", config.atlasEmail, config.atlasToken);
-    // const icons = await api.fetch(`https://api.atlassian.com/jsm/insight/workspace/${config.workspaceId}/v1/icon/global`,
-    //     reqConfig
-    // );
-    // const iconJson = await icons.json();
-    // console.log("icons ==>", iconJson);
     const createSchemaArr = finalAssetTypes.map(tp => {
-      const reqConfig = getAtlasRequestConfig("POST", config.atlasEmail, config.atlasToken);
-      reqConfig.body = JSON.stringify({
-        "inherited": false,
-        "abstractObjectType": false,
-        "objectSchemaId": "3",
-        "iconId": "87",
-        "name": tp
-      })
-      return api.fetch(`https://api.atlassian.com/jsm/insight/workspace/${config.workspaceId}/v1/objecttype/create`,
-        reqConfig
-      );
+
     })
     const createSchemaResponse = await Promise.all(createSchemaArr);
     console.log("createSchemaReponse ==>", createSchemaResponse);
@@ -49,6 +32,17 @@ export const createObjectSchema = async () => {
 
 resolver.define("create-object-type-listener", async ({ payload, context }) => {
 	// process the event
+  const reqConfig = getAtlasRequestConfig("POST", payload.atlasEmail, payload.atlasToken);
+      reqConfig.body = JSON.stringify({
+        "inherited": false,
+        "abstractObjectType": false,
+        "objectSchemaId": "4",
+        "iconId": "87",
+        "name": tp
+      })
+      const createObjectResponse = await api.fetch(`https://api.atlassian.com/jsm/insight/workspace/${config.workspaceId}/v1/objecttype/create`,
+        reqConfig
+      );
 });
 
 export const handler = resolver.getDefinitions();
