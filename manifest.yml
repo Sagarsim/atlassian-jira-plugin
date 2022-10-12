@@ -1,0 +1,26 @@
+modules:
+  jira:adminPage:
+    - key: insight-lansweeper-integration-hello-world-admin-page
+      function: main
+      title: Lansweeper Configuration
+  webtrigger:
+    - key: trigger-create-schema
+      function: create-schema
+  function:
+    - key: main
+      handler: index.config
+    - key: create-schema
+      handler: syncProcess.createObjectSchema
+permissions:
+  external:
+    fetch:
+      backend:
+        - "*.lansweeper.com"
+        - "*.atlassian-dev.net"
+        - https://api.lansweeper.com
+        - https://api.atlassian.com
+  scopes:
+    - storage:app
+    - read:servicedesk-request
+app:
+  id: ari:cloud:ecosystem::app/a9df2b21-fa31-4b7a-a769-82c982eedeb9
