@@ -3,20 +3,31 @@ modules:
     - key: insight-lansweeper-integration-hello-world-admin-page
       function: main
       title: Lansweeper Configuration
-  webtrigger:
-    - key: trigger-create-schema
-      function: create-schema
+  consumer:
+    - key: create-object-type-queue-consumer
+      queue: create-object-type-queue
+      resolver:
+        function: create-object-type
+        method: create-object-type-listener
+    - key: create-object-attr-queue-consumer
+      queue: create-object-attr-queue
+      resolver:
+        function: create-attr-type
+        method: create-object-attr-listener
   function:
     - key: main
       handler: index.config
-    - key: create-schema
-      handler: syncProcess.createObjectSchema
+    - key: create-object-type
+      handler: syncProcess.createObjectTypeHandler
+    - key: create-attr-type
+      handler: syncProcess.createObjectAttrHandler
 permissions:
   external:
     fetch:
       backend:
         - "*.lansweeper.com"
         - "*.atlassian-dev.net"
+        - "*.loca.lt"
         - https://api.lansweeper.com
         - https://api.atlassian.com
   scopes:

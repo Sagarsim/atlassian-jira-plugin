@@ -1,6 +1,7 @@
 import ForgeUI, { render, AdminPage, Fragment, Text, Button, useState, Form, TextField, Select, Option, SectionMessage, ModalDialog, Tabs, Tab } from '@forge/ui';
 import api, { storage, webTrigger } from '@forge/api';
 import { getSites, validateAtlasToken } from "./helper";
+import { createObjectSchema } from './syncProcess';
 const App = () => {
     const [lsToken, setLsToken] = useState("");
     const [configStatus, setConfigStatus] = useState({});
@@ -8,6 +9,10 @@ const App = () => {
     const [atlasEmail, setAtlasEmail] = useState("");
     const [storedSites, setStoredSites] = useState([]);
     const [isOpen, setOpen] = useState(false);
+    const [progress, setProgress] = useState(async() => {
+        const status = await storage.get("progress")
+        return status;
+    });
     const [siteList, setSiteList] = useState(async() => {
         const config = await storage.getSecret("lsConfig");
         if(config && config.lsToken){
@@ -102,10 +107,13 @@ const App = () => {
     const actionButtons = [
         <Button text="Reset" onClick={() => setOpen(true)}/>
     ]
-
-    const startCreateSchemaProcess = async () => {
-        const processUrl = await webTrigger.getUrl("trigger-create-schema");
-        await api.fetch(processUrl);
+    const checkProgress = async () => {
+        const status = await storage.get("progress")
+        setProgress(status);
+    }
+    const resetProgress = async () => {
+        await storage.set("progress", 0)
+        setProgress(0);
     }
     return (
         <Fragment>
@@ -138,7 +146,10 @@ const App = () => {
                             </SectionMessage>}
                 </Tab>
                 <Tab label="Sync Assets">
-                    <Button onClick={startCreateSchemaProcess} text="Create Object Schema" />
+                    <Button onClick={createObjectSchema} text="Create Object Schema" />
+                    <Button onClick={checkProgress} text="Check progress" />
+                    <Button onClick={resetProgress} text="Reset progress" />
+                    <Text>Progress: {progress}</Text>
                 </Tab>
             </Tabs>
         </Fragment>
