@@ -2,7 +2,7 @@ modules:
   jira:adminPage:
     - key: insight-lansweeper-integration-hello-world-admin-page
       function: main
-      title: Lansweeper Configuration
+      title: Lansweeper Asset Sync
   consumer:
     - key: create-object-type-queue-consumer
       queue: create-object-type-queue
@@ -29,6 +29,11 @@ modules:
       resolver:
         function: create-object
         method: create-object-listener
+    - key: create-object-2-queue-consumer
+      queue: create-object-2-queue
+      resolver:
+        function: create-object-2
+        method: create-object-2-listener
   function:
     - key: main
       handler: index.config
@@ -42,6 +47,8 @@ modules:
       handler: syncProcess.createObjectInitHandler
     - key: create-object
       handler: syncProcess.createObjectHandler
+    - key: create-object-2
+      handler: syncProcess.createObject2Handler
 permissions:
   external:
     fetch:

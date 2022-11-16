@@ -16,6 +16,7 @@
     "@forge/api": "^2.7.0",
     "@forge/events": "^0.7.0",
     "@forge/resolver": "^1.4.4",
-    "@forge/ui": "1.4.0"
+    "@forge/ui": "1.4.0",
+    "randomstring": "^1.2.3"
   }
 }

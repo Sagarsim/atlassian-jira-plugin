@@ -1,18 +1,10 @@
-import ForgeUI, { render, AdminPage, Fragment, Text, Button, useState, Strong, Form, Table, Head, Cell, Row,TextField, Select, Option, SectionMessage, ModalDialog, Tabs, Tab, Heading } from '@forge/ui';
+import ForgeUI, { render, AdminPage, Fragment, Text, Button, useState, Strong, Form, StatusLozenge, Table, Head, Cell, Row,TextField, Select, Option, SectionMessage, ModalDialog, Tabs, Tab, Heading } from '@forge/ui';
 import api, { storage, webTrigger, startsWith } from '@forge/api';
 import { getSites, validateAtlasToken } from "./helper";
 import { createObjectSchema, startAssetCreation } from './syncProcess';
-const issues = [
-    {
-      key: 'XEN-1',
-      status: 'In Progress',
-    },
-    {
-      key: 'XEN-2',
-      status: 'To Do',
-    },
-  ];
+
 const App = () => {
+    
     const [lsToken, setLsToken] = useState("");
     const [atlasToken, setAtlasToken] = useState("");
     const [atlasEmail, setAtlasEmail] = useState("");
@@ -21,9 +13,10 @@ const App = () => {
     const [configStatus, setConfigStatus] = useState({});
     const [isOpen, setOpen] = useState(false);
     const [showRunSync, setShowRunSync] = useState(false);
-    const [stats, setStats] = useState(async () => {
-        const assets = await storage.query().where("key", startsWith("assetName")).limit(20).getMany()
-        console.log("stats ==>", assets);
+    const [assetTypeStats, setAssetTypesStats] = useState(async () => {
+        const stats = await storage.get("assetTypeStats")
+        console.log("stats ==>", stats);
+        return stats ? stats : []
     });
     const [siteList, setSiteList] = useState(async() => {
         const config = await storage.getSecret("lsConfig");
@@ -45,7 +38,65 @@ const App = () => {
             return [];
         }
     });
-    
+    let assetTypeCountDummyData = [
+        {
+            asset_type: "Monitor",
+            count: "259"
+        },
+        {
+            asset_type: "Mobile",
+            count: "2"
+        },
+        {
+            asset_type: "Printer",
+            count: "19"
+        },
+        {
+            asset_type: "Linux",
+            count: "106"
+        },
+        {
+            asset_type: "Windows",
+            count: "1045"
+        },
+        {
+            asset_type: "Switch",
+            count: "10"
+        },
+    ]
+    let syncTableDummyData = [
+        {
+            start_time: ' Nov 14 10:59 (UTC)',
+            end_time: '_',
+            status: "inprogress",
+            status_text: "In progress",
+        },
+        {
+            start_time: ' Nov 13 10:59 (UTC)',
+            end_time: ' Nov 13 11:15 (UTC)',
+            status: "success",
+            status_text: "Success",
+        },
+        {
+            sr_no: '3',
+            start_time: ' Nov 12 10:59 (UTC)',
+            end_time: ' Nov 12 11:15 (UTC)',
+            status: "success",
+            status_text: "Success",
+        },
+        {
+            start_time: ' Nov 11 10:59 (UTC)',
+            end_time: ' Nov 11 11:17 (UTC)',
+            status: "success",
+            status_text: "Success",
+        },
+        {
+            start_time: ' Nov 10 10:59 (UTC)',
+            end_time: ' Nov 10 11:11 (UTC)',
+            status: "removed",
+            status_text: "Failed",
+        },
+    ]
     const validateAndSaveConfig = async (formData) => {
         const allSites = await getSites(formData.lsToken);
         if(allSites.length > 0){
@@ -130,36 +181,84 @@ const App = () => {
                                     <Option label="Daily" value="daily" defaultSelected={runAt === "daily" ? true : false}/>
                                     <Option label="Weekly" value="weekly" defaultSelected={runAt === "weekly" ? true : false}/>
                             </Select>
-                            <TextField type='number' defaultValue={runAtInterval} isRequired name="runInterval" label="Set Run Interval" description="Set interval of after every X no. of hours, days or weeks the sync process will run."/>
+                            <TextField type='number' defaultValue={runAtInterval} isRequired name="runInterval" label="Set Run Interval" description="Set interval delay of hours, days or weeks after which the sync process will run."/>
                         </Form>
                         {Object.keys(configStatus).length > 0 && <SectionMessage title={configStatus.title} appearance={configStatus.appearance}>
                          <Text>{configStatus.description}</Text>
                          </SectionMessage>}
-                        {showRunSync && <Button onClick={createObjectSchema} text="Run Full Sync" />}
+                        {showRunSync && <Button onClick={startAssetCreation} text="Run Full Sync" />}
                         
                 </Tab>
                 <Tab label="Statistics">
-                <Heading size="small">Asset Types</Heading>
-                <Table>
-                    <Head>
-                    <Cell>
-                        <Text>Asset Type</Text>
-                    </Cell>
-                    <Cell>
-                        <Text>No. of assets</Text>
-                    </Cell>
-                    </Head>
-                    {issues.map(issue => (
-                    <Row>
-                        <Cell>
-                        <Text>{issue.key}</Text>
-                        </Cell>
-                        <Cell>
-                        <Text>{issue.status}</Text>
-                        </Cell>
-                    </Row>
-                    ))}
-                </Table>
+                <Text><StatusLozenge text="Historical Sync Data" appearance="new" /></Text>
+                    <Table>
+                            <Head>
+                            <Cell>
+                            <Text>Serial Number</Text>
+                            </Cell>
+                            <Cell>
+                            <Text>Sync Start Time</Text>
+                            </Cell>
+                            <Cell>
+                            <Text>Sync End Time</Text>
+                            </Cell>
+                            <Cell>
+                                <Text>Status</Text>
+                            </Cell>
+                            </Head>
+                        {syncTableDummyData.map((syncData, index) => (
+                            <Row>
+                            <Cell>
+                            <Text>{index + 1}</Text>
+                            </Cell>
+                            <Cell>
+                            <Text>{syncData.start_time}</Text>
+                            </Cell>
+                            <Cell>
+                            <Text>{syncData.end_time}</Text>
+                            </Cell>
+                            <Cell>
+                                <Text>
+                                    <StatusLozenge text={syncData.status_text} appearance={syncData.status} />
+                                </Text>
+                            </Cell>
+                            </Row>
+                        ))}
+                    </Table>
+                    <Text><StatusLozenge text="Synced Assets Table" appearance="new" /></Text>
+                    <Table rowsPerPage={5}>
+                        <Head>
+                            <Cell>
+                                <Text>Serial Number</Text>
+                            </Cell>
+                            <Cell>
+                                <Text>Asset Type</Text>
+                            </Cell>
+                            <Cell>
+                                <Text>Total Asset</Text>
+                            </Cell>
+                            <Cell>
+                                <Text>Total Asset Synced</Text>
+                            </Cell>
+                            
+                        </Head>
+                        {assetTypeStats.length > 0 && assetTypeStats.map((assetType, index) => (
+                            <Row>
+                                <Cell>
+                                    <Text>{index + 1}</Text>
+                                </Cell>
+                                <Cell>
+                                    <Text>{assetType.assetTypeName}</Text>
+                                </Cell>
+                                <Cell>
+                                    <Text>{assetType.totalAssets}</Text>
+                                </Cell>
+                                <Cell>
+                                    <Text>{assetType.totalSyncedAssets}</Text>
+                                </Cell>
+                            </Row>
+                        ))}
+                    </Table>
                 </Tab>
             </Tabs>
         </Fragment>
