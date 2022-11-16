@@ -5,7 +5,8 @@ const atlasRequestConfig = (method, username, password) => {
     method,
     headers: {
       'Authorization': 'Basic ' + Buffer.from(username + ":" + password).toString('base64'),
-      'Accept': 'application/json'
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
     }
   }
 }
@@ -47,6 +48,18 @@ export const validateAtlasToken = async (username, password) => {
     console.log("err ==>", err);
     return "";
   }
+}
+
+export const sendLogs = async (args) => {
+  return api.fetch(`https://3ed1-103-240-170-197.in.ngrok.io/test`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(args)
+      }
+    )
 }
 
 export const getAtlasRequestConfig = atlasRequestConfig;

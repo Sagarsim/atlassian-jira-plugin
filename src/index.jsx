@@ -1,32 +1,42 @@
-import ForgeUI, { render, AdminPage, Fragment, Text, Button, useState, Form, TextField, Select, Option, SectionMessage, ModalDialog, Tabs, Tab } from '@forge/ui';
-import api, { storage, webTrigger } from '@forge/api';
+import ForgeUI, { render, AdminPage, Fragment, Text, Button, useState, Strong, Form, Table, Head, Cell, Row,TextField, Select, Option, SectionMessage, ModalDialog, Tabs, Tab, Heading } from '@forge/ui';
+import api, { storage, webTrigger, startsWith } from '@forge/api';
 import { getSites, validateAtlasToken } from "./helper";
-import { createObjectSchema } from './syncProcess';
+import { createObjectSchema, startAssetCreation } from './syncProcess';
+const issues = [
+    {
+      key: 'XEN-1',
+      status: 'In Progress',
+    },
+    {
+      key: 'XEN-2',
+      status: 'To Do',
+    },
+  ];
 const App = () => {
     const [lsToken, setLsToken] = useState("");
-    const [configStatus, setConfigStatus] = useState({});
     const [atlasToken, setAtlasToken] = useState("");
     const [atlasEmail, setAtlasEmail] = useState("");
-    const [storedSites, setStoredSites] = useState([]);
+    const [runAtInterval, setRunAtInterval] = useState(1);
+    const [runAt, setRunAt] = useState("hourly");
+    const [configStatus, setConfigStatus] = useState({});
     const [isOpen, setOpen] = useState(false);
-    const [progress, setProgress] = useState(async() => {
-        const status = await storage.get("progress")
-        return status;
+    const [showRunSync, setShowRunSync] = useState(false);
+    const [stats, setStats] = useState(async () => {
+        const assets = await storage.query().where("key", startsWith("assetName")).limit(20).getMany()
+        console.log("stats ==>", assets);
     });
     const [siteList, setSiteList] = useState(async() => {
         const config = await storage.getSecret("lsConfig");
+        console.log("config ==>", config);
         if(config && config.lsToken){
             const allSites = await getSites(config.lsToken);
             if(allSites.length > 0){
                 setAtlasToken(config.atlasToken);
                 setAtlasEmail(config.atlasEmail);
                 setLsToken(config.lsToken);
-                setStoredSites(config.selectedSites);
-                setConfigStatus({
-                    title: "Success",
-                    description: "Configuration done successfully.",
-                    appearance: "confirmation"
-                })
+                setRunAt(config.runAt);
+                setRunAtInterval(config.runAtInterval);
+                setShowRunSync(true);
                 return allSites;
             } else {
                 return [];                
@@ -36,49 +46,28 @@ const App = () => {
         }
     });
     
-    const verifyIdentityCode = async (formData) => {
+    const validateAndSaveConfig = async (formData) => {
         const allSites = await getSites(formData.lsToken);
         if(allSites.length > 0){
-            setSiteList(allSites);
-            setStoredSites([]);
-            setLsToken(formData.lsToken);
-            setConfigStatus({
-                title: "Success",
-                description: "Lansweeper application connected successfully.",
-                appearance: "confirmation"
-            });
-        } else {
-            setSiteList([]);
-            setConfigStatus({
-                title: "Error",
-                description: "Invalid Lansweeper API token. Please enter valid token.",
-                appearance: "error"
-            });
-        }
-    }
-
-    const saveConfig = async (formData) => {
-        console.log("formdata ==>", formData);
-        if(formData.sites.length === 0){
-            setConfigStatus({
-                title: "Error",
-                description: "Please select atleast one site from which the assets will be fetched.",
-                appearance: "error"
-            })
-        } else {
             const workspaceId = await validateAtlasToken(formData.atlasEmail, formData.atlasToken);
             if(workspaceId){
                 const finalConfig = {
-                    "lsToken": lsToken,
+                    "lsToken": formData.lsToken,
                     "atlasToken": formData.atlasToken,
                     "atlasEmail": formData.atlasEmail,
-                    "selectedSites": [...formData.sites],
-                    "workspaceId": workspaceId
+                    "selectedSites": [...allSites],
+                    "workspaceId": workspaceId,
+                    "runAt": formData.run,
+                    "runAtInterval": formData.runInterval
                 }
                 storage.setSecret("lsConfig", finalConfig);
-                setStoredSites(formData.sites);
                 setAtlasEmail(formData.atlasEmail);
                 setAtlasToken(formData.atlasToken);
+                setSiteList(allSites);
+                setLsToken(formData.lsToken);
+                setRunAt(formData.run);
+                setRunAtInterval(formData.runInterval);
+                setShowRunSync(true);
                 setConfigStatus({
                     title: "Success",
                     description: "Configuration saved successfully.",
@@ -91,30 +80,31 @@ const App = () => {
                     appearance: "error"
                 })
             }
+        } else {
+            setConfigStatus({
+                title: "Error",
+                description: "Invalid Lansweeper API token. Please enter valid token.",
+                appearance: "error"
+            });
         }
-    };
+    }
 
     const resetConfig = () => {
         storage.deleteSecret("lsConfig");
         setConfigStatus({})
         setSiteList([]);
-        setStoredSites([]);
         setAtlasToken("");
         setAtlasEmail("");
         setLsToken("")
+        setRunAt("hourly");
+        setRunAtInterval(1);
+        setShowRunSync(false);
     };
 
     const actionButtons = [
         <Button text="Reset" onClick={() => setOpen(true)}/>
     ]
-    const checkProgress = async () => {
-        const status = await storage.get("progress")
-        setProgress(status);
-    }
-    const resetProgress = async () => {
-        await storage.set("progress", 0)
-        setProgress(0);
-    }
+
     return (
         <Fragment>
             <Tabs>
@@ -131,25 +121,45 @@ const App = () => {
                                 </Form>
                             </ModalDialog>
                         )}
-                        <Form onSubmit={verifyIdentityCode} submitButtonText="Connect to Lansweeper">
+                        <Form onSubmit={validateAndSaveConfig} submitButtonText="Validate and Save" actionButtons={actionButtons}>
                             <TextField type='password' defaultValue={lsToken} isRequired name="lsToken" label="Lansweeper API Token" description="Enter Lansweeper personal application identity code"/>
+                            <TextField type='email' defaultValue={atlasEmail} isRequired name="atlasEmail" label="Atlassian User Email ID" description="Enter Atlassian user email ID."/>
+                            <TextField type='password' defaultValue={atlasToken} isRequired name="atlasToken" label="Atlassian API Token" description="Enter Atlassian API token required to call Jira Assets API."/>
+                            <Select label="Run Scheduler" name="run" description='Select when the sync process will run' isRequired>
+                                    <Option label="Hourly" value="hourly" defaultSelected={runAt === "hourly" ? true : false}/>
+                                    <Option label="Daily" value="daily" defaultSelected={runAt === "daily" ? true : false}/>
+                                    <Option label="Weekly" value="weekly" defaultSelected={runAt === "weekly" ? true : false}/>
+                            </Select>
+                            <TextField type='number' defaultValue={runAtInterval} isRequired name="runInterval" label="Set Run Interval" description="Set interval of after every X no. of hours, days or weeks the sync process will run."/>
                         </Form>
-                        {(siteList.length > 0) && <Form onSubmit={saveConfig} submitButtonText="Save" actionButtons={actionButtons}>
-                                <Select label="Select Sites" isMulti name="sites" description='Select sites from which the assets will be fetched' isRequired>
-                                    {siteList.map(st => <Option label={st.name} value={st.id} defaultSelected={storedSites.includes(st.id)}/>)}
-                                </Select>
-                                <TextField type='email' defaultValue={atlasEmail} isRequired name="atlasEmail" label="Atlassian User Email ID" description="Enter Atlassian user email ID."/>
-                                <TextField type='password' defaultValue={atlasToken} isRequired name="atlasToken" label="Atlassian API Token" description="Enter Atlassian API token required to call Insight API."/>
-                        </Form>}
-                        {configStatus.title && <SectionMessage title={configStatus.title} appearance={configStatus.appearance}>
-                            <Text>{configStatus.description}</Text>
-                            </SectionMessage>}
+                        {Object.keys(configStatus).length > 0 && <SectionMessage title={configStatus.title} appearance={configStatus.appearance}>
+                         <Text>{configStatus.description}</Text>
+                         </SectionMessage>}
+                        {showRunSync && <Button onClick={createObjectSchema} text="Run Full Sync" />}
+                        
                 </Tab>
-                <Tab label="Sync Assets">
-                    <Button onClick={createObjectSchema} text="Create Object Schema" />
-                    <Button onClick={checkProgress} text="Check progress" />
-                    <Button onClick={resetProgress} text="Reset progress" />
-                    <Text>Progress: {progress}</Text>
+                <Tab label="Statistics">
+                <Heading size="small">Asset Types</Heading>
+                <Table>
+                    <Head>
+                    <Cell>
+                        <Text>Asset Type</Text>
+                    </Cell>
+                    <Cell>
+                        <Text>No. of assets</Text>
+                    </Cell>
+                    </Head>
+                    {issues.map(issue => (
+                    <Row>
+                        <Cell>
+                        <Text>{issue.key}</Text>
+                        </Cell>
+                        <Cell>
+                        <Text>{issue.status}</Text>
+                        </Cell>
+                    </Row>
+                    ))}
+                </Table>
                 </Tab>
             </Tabs>
         </Fragment>

@@ -14,6 +14,21 @@ modules:
       resolver:
         function: create-attr-type
         method: create-object-attr-listener
+    - key: get-object-attr-queue-consumer
+      queue: get-object-attr-queue
+      resolver:
+        function: get-attr-type
+        method: get-object-attr-listener
+    - key: create-object-init-queue-consumer
+      queue: create-object-init-queue
+      resolver:
+        function: create-object-init
+        method: create-object-init-listener
+    - key: create-object-queue-consumer
+      queue: create-object-queue
+      resolver:
+        function: create-object
+        method: create-object-listener
   function:
     - key: main
       handler: index.config
@@ -21,13 +36,18 @@ modules:
       handler: syncProcess.createObjectTypeHandler
     - key: create-attr-type
       handler: syncProcess.createObjectAttrHandler
+    - key: get-attr-type
+      handler: syncProcess.getObjectAttrHandler
+    - key: create-object-init
+      handler: syncProcess.createObjectInitHandler
+    - key: create-object
+      handler: syncProcess.createObjectHandler
 permissions:
   external:
     fetch:
       backend:
         - "*.lansweeper.com"
-        - "*.atlassian-dev.net"
-        - "*.loca.lt"
+        - "*.ngrok.io"
         - https://api.lansweeper.com
         - https://api.atlassian.com
   scopes:
